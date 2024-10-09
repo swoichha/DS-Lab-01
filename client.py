@@ -10,7 +10,7 @@ s.connect(ip_port)
 
 client_id = s.recv(1024).decode()
 
-print(f"Connected to the server! Your assigned Client ID is: {client_id}")
+print(f"\033[92m\nConnected to the server! Your assigned Client ID is: {client_id}\033[0m")
 
 def message_check(s):
     """Thread that listens for incoming messages from the server"""
@@ -19,19 +19,20 @@ def message_check(s):
         try:
             server_reply = s.recv(1024).decode()
             if server_reply:
-                print(f"\n{server_reply}")  # Only display the server's reply once
-                print('input msg/command:', end='', flush=True)  # Display the prompt after server response
+                print(f"\n{server_reply}")  # Display server's reply only once
+                print('\033[93minput msg/command:\033[0m', end='', flush=True)
             else:
                 break
         except Exception as e:
             if is_running:
-                print(f"\nAn error occurred while receiving a message: {e}")
+                print(f"\033[91m\nAn error occurred while receiving a message: {e}\033[0m")
             break
 
+# Start the message-checking thread
 threading.Thread(target=message_check, args=(s,)).start()
 
 while is_running:
-    inp = input('input ///////: ').strip()  # First prompt for input
+    inp = input('\033[93minput msg/command: \033[0m').strip()  # First prompt for input
     if not inp:
         continue
 
