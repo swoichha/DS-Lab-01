@@ -27,14 +27,12 @@ def chat_history(client_id,target_id):
     return history
 
 def link_handler(link, client):
-    #client_id = client[1] #change this to add unique random numerical digits of len 5
-    client_id = str(random.randint(100000, 999999))  
+    client_id = int(random.randint(100000, 999999))
     print('\033[92m\nserver start to receiving msg from [%s:%s]....\033[0m' % (client[0], client[1]))
     link.sendall(f'{client_id}'.encode())
     clients[client_id] = link
-
     available_commands = "Use any from these available commands: list; history <client_id>; forward <client_id>: <message>; exit;"
-
+    
     while True:
         client_data = link.recv(1024).decode()
         if re.search(r"(?i)exit", client_data):
@@ -61,17 +59,20 @@ def link_handler(link, client):
             target_id = int(input_split[0].split()[-1])
             message = input_split[1]
             messages.setdefault(client_id ,{}).setdefault(target_id, []).append([message,datetime.datetime.now()])
-
-            if target_id == client_id:
-            # Error for sending message to yourself
-                link.sendall('\033[91m\nError: Cannot send message to yourself\033[0m'.encode())
-            elif target_id in clients:
-            # Forward the message if the target is valid and not the same as the sender
-                clients[target_id].sendall(f"{client_id}: {message}".encode())
-                link.sendall(f'\033[92m\nMessage forwarded to client {target_id}\033[0m'.encode())
+            
+            if target_id:
+                # Check if the target_id is the same as the client_id
+                if target_id == client_id:
+                    link.sendall('\033[91m\nError: Cannot send message to yourself\033[0m'.encode())
+                # Check if target_id is in clients.keys() (valid client)
+                elif target_id in clients:
+                    clients[target_id].sendall(f"{client_id}: {message}".encode())
+                    link.sendall(f'\033[92m\nMessage forwarded to client {target_id}\033[0m'.encode())
+                # If target_id is not in clients, it's an invalid client
+                else:
+                    link.sendall('\033[91m\nError: Invalid Targeted ID\033[0m'.encode())
             else:
-                # Error for invalid target ID
-                link.sendall('\033[91m\nError: Invalid Targeted ID\033[0m'.encode())
+                link.sendall('\033[91m\nSomething went wrong. Cannot find the Target ID. Try again !!!\033[0m'.encode())
 
         elif re.search(r"(?i)history\s\d+", client_data):
             '''
@@ -81,8 +82,11 @@ def link_handler(link, client):
             history target_client_ID
             '''
             target_id = int(client_data.split()[1])
-            if target_id in list(clients.keys()):
-                chat_hist = chat_history(client_id,target_id)
+            chat_hist = chat_history(client_id,target_id)
+            if target_id == client_id:
+                link.sendall('\033[91m\nError: Cannot check hsitory message to yourself\033[0m'.encode())
+                # Check if target_id is in clients.keys() (valid client)
+            else:
                 if chat_hist:
                     msg = []
                     for chat in chat_hist:
@@ -93,13 +97,10 @@ def link_handler(link, client):
                         msg.append(f"{str(chat[0])+status} : {chat[1]}")
                     link.sendall('\n'.join(msg).encode())
                 else:
-                    link.sendall(f'No history found with client ID {target_id}'.encode())
-            else:
-                link.sendall('\033[91m\nError: Invalid Targeted ID\033[0m'.encode())
+                    link.sendall(f'\033[91m\nNo history found with client ID {target_id}\033[0m\n'.encode())
+            
         else:
-            # link.sendall('Please Provide a valid command with a proper format'.encode())
-            link.sendall(f'\033[91m\nError: Command not found.\n{available_commands}\033[0m\n'.encode())
-
+            link.sendall(f'\033[91m\nERROR: Command not found.\n{available_commands}\033[0m\n'.encode())
         print('\033[94mclient from [%s:%s] send a msg：%s\033[0m' % (client[0], client[1], client_data))
     link.close()
     del clients[client_id]
